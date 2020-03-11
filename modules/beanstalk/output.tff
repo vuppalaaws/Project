@@ -1,0 +1,7 @@
+output "application-endpoint" {
+  value = "${aws_elastic_beanstalk_environment.dev.cname}"
+}
+
+output "load-balancers" {
+  value = ["${aws_elastic_beanstalk_environment.dev.load_balancers}"]
+}

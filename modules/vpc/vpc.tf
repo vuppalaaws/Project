@@ -1,126 +1,106 @@
+ data "aws_availability_zones" "available" {
 
-# get available az
-data "aws_availability_zones" "available" {}
-####VPC######
-
+ }
+#######  VPC  #######
 resource "aws_vpc" "custom-vpc" {
-  cidr_block           = "${var.vpc_cidr}"
-  enable_dns_hostnames = true
+   cidr_block       =  var.cidr-block
+   enable_dns_hostnames = true
 
-  tags = {
+   tags = {
     Name         = "${var.platform}-${var.env}-vpc"
-    Env          = "${var.env}"
-    OwnerContact = "${var.OwnerContact}"
+    Env          = var.env
+    OwnerContact = var.OwnerContact
   }
 }
-
-####Internet Gateway######
-resource "aws_internet_gateway" "internetgateway" {
-  vpc_id = "${aws_vpc.custom-vpc.id}"
+#########  IGW - Internet Gateway  ########
+resource "aws_internet_gateway" "igw" {
+  vpc_id  =  aws_vpc.custom-vpc.id
 
   tags = {
-    Name         = "${var.platform}-${var.env}-igw"
-    Env          = "${var.env}"
-    OwnerContact = "${var.OwnerContact}"
+    Name         = "${var.platform}-${var.env}-IGW"
+    Env          = var.env
+    OwnerContact = var.OwnerContact
   }
 }
-
-#####Public Subnets
-resource "aws_subnet" "publicsubnet" {
-  vpc_id                  = "${aws_vpc.custom-vpc.id}"
-  availability_zone = "${data.aws_availability_zones.available.names[0]}"
-  cidr_block              = "${var.public_subnet1}"
-  map_public_ip_on_launch = true
+#########  Public Subnet  ###########
+resource "aws_subnet" "public-subnet" {
+  vpc_id     = aws_vpc.custom-vpc.id
+  cidr_block = var.public-subnet-cidr
+  map_public_ip_on_launch = "true"
+  availability_zone = data.aws_availability_zones.available.names[0]
 
   tags = {
     Name         = "${var.platform}-${var.env}-publicsubnet"
-    Env          = "${var.env}"
-    OwnerContact = "${var.OwnerContact}"
+    Env          = var.env
+    OwnerContact = var.OwnerContact
   }
 }
 
+############  Private Subnet #######
+resource "aws_subnet" "private-subnet" {
+  vpc_id     = aws_vpc.custom-vpc.id
+  cidr_block = var.private-subnet-cidr
 
-#### Private Subnets
-resource "aws_subnet" "privatesubnet" {
-  vpc_id     = "${aws_vpc.custom-vpc.id}"
-  availability_zone = "${data.aws_availability_zones.available.names[0]}"
-  cidr_block = "${var.private_subnet1}"
+  availability_zone = data.aws_availability_zones.available.names[0]
 
   tags = {
     Name         = "${var.platform}-${var.env}-privatesubnet"
-    Env          = "${var.env}"
-    OwnerContact = "${var.OwnerContact}"
+    Env          = var.env
+    OwnerContact = var.OwnerContact
   }
 }
 
-
-
-##########Public Route Table#########
-resource "aws_route_table" "publicroutetable" {
-  vpc_id = "${aws_vpc.custom-vpc.id}"
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = "${aws_internet_gateway.internetgateway.id}"
-  }
-
-  tags = {
-    Name         = "${var.platform}-${var.env}-publicroutetable"
-    Env          = "${var.env}"
-  }
-}
-
-#######Public Route Table Association######
-
-resource "aws_route_table_association" "publicsubnet1sassociation" {
-  subnet_id      = "${aws_subnet.publicsubnet1.id}"
-  route_table_id = "${aws_route_table.publicroutetable.id}"
-}
-
-
-
-
-
-#############NAT GATEWAY &&& EIP ################
-
-resource "aws_eip" "elasticipprivate" {
+##########   EIP - Elastic IP  ##########
+resource "aws_eip" "nat" {
   vpc = true
-  depends_on = ["aws_internet_gateway.internetgateway"]
 }
+##########  NGW - NAT Gateway  ############
+resource "aws_nat_gateway" "ngw" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public-subnet.id
 
-resource "aws_nat_gateway" "natgateway" {
-  allocation_id = "${aws_eip.elasticipprivate.id}"
-  subnet_id     = "${aws_subnet.publicsubnet1.id}"
-    tags {
-    Name         = "${var.platform}-${var.env}-natgateway"
-    Env          = "${var.env}"
-    
+  tags = {
+    Name         = "${var.platform}-${var.env}-ngw"
+    Env          = var.env
+
   }
 }
-
-########Private Route Table##########
-resource "aws_route_table" "privateroutetable" {
-  vpc_id = "${aws_vpc.custom-vpc.id}"
+########  Public RT  ########
+resource "aws_route_table" "public-rt" {
+   vpc_id = aws_vpc.custom-vpc.id
 
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = "${aws_nat_gateway.natgateway.id}"
+    gateway_id = aws_internet_gateway.igw.id
   }
-
   tags = {
-    Name         = "${var.platform}-${var.env}-privateroutetable"
-    Env          = "${var.env}"
+    Name         = "${var.platform}-${var.env}-publicrt"
+    Env          = var.env
+
   }
 }
-
-#######Private Route Table Association ####
-
-resource "aws_route_table_association" "privatesubnet1sassociation" {
-  subnet_id      = "${aws_subnet.privatesubnet1.id}"
-  route_table_id = "${aws_route_table.privateroutetable.id}"
+#########  Public1 RTAssociation  ######
+resource "aws_route_table_association" "a-public" {
+  subnet_id      = aws_subnet.public-subnet.id
+  route_table_id = aws_route_table.public-rt.id
 }
 
+##########  Private RT  ########
+resource "aws_route_table" "private-rt" {
+   vpc_id = aws_vpc.custom-vpc.id
 
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_nat_gateway.ngw.id
+  }
+  tags = {
+    Name         = "${var.platform}-${var.env}-privatert"
+    Env          = var.env
 
-
-  
+  }
+}
+#######  Private1 RTAssociation  #####
+resource "aws_route_table_association" "a-private" {
+  subnet_id      = aws_subnet.private-subnet.id
+  route_table_id = aws_route_table.private-rt.id
+}
