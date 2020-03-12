@@ -37,7 +37,7 @@ module "beanstalk" {
   ec2_security_group_ids = "sg-0ada54aa1c738a4cb"
   #s3bucket               = "Endpoint-est-codepipeline"
   #elb_scheme             = "application"
-
+ name = "myrepo"
   wait_for_ready_timeout = "10m"
 
   #solution_stack_name    = "${var.beanstalk_solution_stack_name}"

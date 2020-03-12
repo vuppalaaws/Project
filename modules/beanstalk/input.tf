@@ -1,6 +1,6 @@
 #variable "application_name" {}
 #variable "runtime_environment" {}
-
+variable "name" {}
 
 variable "account_name" {}
 
