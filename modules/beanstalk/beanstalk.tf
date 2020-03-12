@@ -70,34 +70,20 @@ resource "aws_elastic_beanstalk_environment" "dev" {
     name      = "EC2KeyName"
     value     = var.key_name
   }
-
- 
-  setting {
+setting {
     namespace = "aws:autoscaling:launchconfiguration"
     name      = "SecurityGroups"
     value     = var.ec2_security_group_ids
   }
-
-
   setting {
     namespace = "aws:autoscaling:asg"
     name      = "MinSize"
     value     = var.min_instances
   }
-
-  setting {
+   setting {
     namespace = "aws:autoscaling:asg"
     name      = "MaxSize"
     value     = var.max_instances
   }
 
-  
-
- 
- 
-
-
-
-
-
-}
+  }
